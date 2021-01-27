@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, a, button, div, h1, img, span, text)
+import Html exposing (Html, a, button, div, h1, i, img, span, text)
 import Html.Attributes exposing (class, src)
 
 
@@ -67,5 +67,5 @@ viewItem item =
     div [ class "list-item" ]
         [ span [ class "list-item-text" ] [ text item ]
         , span [ class "list-item-actions" ]
-            [ button [ class "icon-button" ] [] ]
+            [ button [ class "icon-button" ] [ i [ class "fas fa-pencil-alt" ] [] ] ]
         ]
