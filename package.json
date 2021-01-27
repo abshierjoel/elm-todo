@@ -1,0 +1,19 @@
+{
+  "name": "elm-todo",
+  "version": "1.0.0",
+  "description": "A simple Elm TODO app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abshierjoel/elm-todo.git"
+  },
+  "author": "Joel Abshier",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/abshierjoel/elm-todo/issues"
+  },
+  "homepage": "https://github.com/abshierjoel/elm-todo#readme"
+}
