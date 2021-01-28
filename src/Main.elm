@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Browser
 import Char exposing (isDigit)
@@ -27,6 +27,9 @@ main =
         , update = update
         , subscriptions = always Sub.none
         }
+
+
+port setTheme : Bool -> Cmd msg
 
 
 
@@ -63,7 +66,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedDarkMode ->
-            ( { model | isDark = not model.isDark }, Cmd.none )
+            ( { model | isDark = not model.isDark }, setTheme model.isDark )
 
 
 
@@ -72,11 +75,24 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "main" ]
-        [ h1 [ class "text-white text-shadow" ] [ text "Two Dew Elm" ]
-        , div [ class "todo-list" ] (List.map viewItem model.items)
-        , viewDarkModeToggle model.isDark
-        , Icon.css
+    let
+        colorTheme =
+            if model.isDark == True then
+                "theme--dark"
+
+            else
+                "theme--default"
+
+        theme =
+            "theme " ++ colorTheme
+    in
+    div [ class theme ]
+        [ div [ class "main" ]
+            [ h1 [ class "text-white text-shadow" ] [ text "Two Dew Elm" ]
+            , div [ class "todo-list" ] (List.map viewItem model.items)
+            , viewDarkModeToggle model.isDark
+            , Icon.css
+            ]
         ]
 
 

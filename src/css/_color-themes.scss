@@ -1,0 +1,48 @@
+$background: 'background';
+$contentBg: 'contentBg';
+$text: 'text';
+$secondaryText: 'secondaryText';
+$primaryColor: 'primaryColor';
+$secondaryColor: 'secondaryColor';
+
+$themes: (
+  default: (
+    background: lightslategrey,
+    contentBg: white,
+    text: #333,
+    secondaryText: #555555,
+    primaryColor: dodgerblue,
+    secondaryColor: crimson,
+  ),
+  dark: (
+    background: #212121,
+    contentBg: #444,
+    text: #fff,
+    secondaryText: #ccc,
+    primaryColor: dodgerblue,
+    secondaryColor: crimson,
+  ),
+);
+
+@mixin themed() {
+  @each $theme, $map in $themes {
+    .theme--#{$theme} & {
+      $theme-map: () !global;
+      @each $key, $submap in $map {
+        $value: map-get(map-get($themes, $theme), '#{$key}');
+        $theme-map: map-merge(
+          $theme-map,
+          (
+            $key: $value,
+          )
+        ) !global;
+      }
+      @content;
+      $theme-map: null !global;
+    }
+  }
+}
+
+@function t($key) {
+  @return map-get($theme-map, $key);
+}

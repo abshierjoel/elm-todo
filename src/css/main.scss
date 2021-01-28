@@ -1,22 +1,20 @@
-/*
-  elm-hot creates an additional div wrapper around the app to make HMR possible.
-  This could break styling in development mode if you are using Elm UI.
-
-  More context in the issue:
-    https://github.com/halfzebra/create-elm-app/issues/320
-*/
-
 [data-elm-hot='true'] {
   height: inherit;
 }
+
+@import './_color-themes.scss';
+@import './_toggle.scss';
 
 body {
   font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande',
     'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
+  padding: none;
   text-align: center;
-  color: #293c4b;
-  background: lightslategrey;
+
+  @include themed() {
+    background: t($background);
+  }
 }
 
 h1 {
@@ -28,15 +26,29 @@ img {
   max-width: 200px;
 }
 
+div {
+  box-sizing: border-box;
+}
+
 .main {
-  max-width: 540px;
-  margin: 0 auto;
+  min-height: 1200px;
+
+  padding: 80px 8px;
+
+  @include themed() {
+    background: t($background);
+  }
+}
+
+h1.logo {
+  color: white;
 }
 
 .todo-list {
   display: flex;
-  min-width: 480px;
-  margin: 12px;
+  max-width: 540px;
+  min-width: 400px;
+  margin: 12px auto;
   flex-direction: column;
 }
 
@@ -46,7 +58,9 @@ img {
   padding: 12px 16px;
   border-radius: 6px;
 
-  background: white;
+  @include themed() {
+    background: t($contentBg);
+  }
   box-shadow: rgba(0, 0, 0, 0.2) 1px 4px 1px;
 
   text-align: left;
@@ -56,6 +70,10 @@ img {
 
 .list-item-text {
   flex-grow: 1;
+
+  @include themed() {
+    color: t($text);
+  }
 }
 
 .list-item-actions button {
@@ -72,27 +90,29 @@ img {
 .dark-mode {
   font-size: 1.5rem;
   line-height: 2rem;
-}
 
-.toggle {
-  width: 80px;
-  height: 30px;
-  background: #333;
-  border: unset;
-  cursor: pointer;
+  @include themed() {
+    color: t($secondaryText);
+  }
 }
 
 .text-white {
   color: white;
 }
 .text-blue {
-  color: dodgerblue;
+  @include themed() {
+    color: t($primaryColor);
+  }
 }
 .text-red {
-  color: crimson;
+  @include themed() {
+    color: t($secondaryColor);
+  }
 }
 .text-grey {
-  color: #555;
+  @include themed() {
+    color: t($secondaryText);
+  }
 }
 
 .text-shadow {
