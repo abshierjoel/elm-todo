@@ -5,6 +5,7 @@
   More context in the issue:
     https://github.com/halfzebra/create-elm-app/issues/320
 */
+
 [data-elm-hot='true'] {
   height: inherit;
 }
@@ -15,11 +16,11 @@ body {
   margin: 0;
   text-align: center;
   color: #293c4b;
-  background: #eee;
+  background: lightslategrey;
 }
 
 h1 {
-  font-size: 30px;
+  font-size: 3rem;
 }
 
 img {
@@ -34,30 +35,66 @@ img {
 
 .todo-list {
   display: flex;
+  min-width: 480px;
+  margin: 12px;
   flex-direction: column;
-
-  background: white;
 }
 
 .list-item {
+  margin: 6px 0;
   display: flex;
   padding: 12px 16px;
-  border: 1px solid #aaa;
+  border-radius: 6px;
+
+  background: white;
+  box-shadow: rgba(0, 0, 0, 0.2) 1px 4px 1px;
 
   text-align: left;
   font-size: 1rem;
+  line-height: 1.6rem;
 }
 
 .list-item-text {
   flex-grow: 1;
 }
 
-.list-item-actions {
-}
+.list-item-actions button {
+  margin: 0px 8px;
+  padding: unset;
 
-.list-item-actions > button {
-  color: #555;
   font-size: 1.2rem;
   border: unset;
   background: unset;
+
+  cursor: pointer;
+}
+
+.dark-mode {
+  font-size: 1.5rem;
+  line-height: 2rem;
+}
+
+.toggle {
+  width: 80px;
+  height: 30px;
+  background: #333;
+  border: unset;
+  cursor: pointer;
+}
+
+.text-white {
+  color: white;
+}
+.text-blue {
+  color: dodgerblue;
+}
+.text-red {
+  color: crimson;
+}
+.text-grey {
+  color: #555;
+}
+
+.text-shadow {
+  text-shadow: rgba(0, 0, 0, 0.1) 2px 2px 1px;
 }

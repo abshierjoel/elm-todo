@@ -1,8 +1,8 @@
-import './main.css';
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
 
-import './css/all.css';
+import './main.css';
+import './css/toggle.css';
 
 Elm.Main.init({
   node: document.getElementById('root'),

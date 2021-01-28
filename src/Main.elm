@@ -1,8 +1,18 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, a, button, div, h1, i, img, span, text)
-import Html.Attributes exposing (class, src)
+import Char exposing (isDigit)
+import FontAwesome.Attributes as Icon
+import FontAwesome.Brands as Icon
+import FontAwesome.Icon as Icon exposing (Icon)
+import FontAwesome.Layering as Icon
+import FontAwesome.Solid as Icon
+import FontAwesome.Styles as Icon
+import FontAwesome.Svg as SvgIcon
+import FontAwesome.Transforms as Icon
+import Html exposing (Html, a, button, div, h1, i, img, input, label, span, text)
+import Html.Attributes exposing (checked, class, src, type_)
+import Html.Events exposing (onClick)
 
 
 
@@ -24,7 +34,9 @@ main =
 
 
 type alias Model =
-    { items : List String }
+    { items : List String
+    , isDark : Bool
+    }
 
 
 init : ( Model, Cmd Msg )
@@ -34,7 +46,9 @@ init =
 
 initialModel : Model
 initialModel =
-    { items = [ "Do Thing", "Make Work Happen", "Execute Action" ] }
+    { items = [ "Do Thing", "Make Work Happen", "Execute Action" ]
+    , isDark = True
+    }
 
 
 
@@ -42,12 +56,14 @@ initialModel =
 
 
 type Msg
-    = NoOp
+    = ClickedDarkMode
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        ClickedDarkMode ->
+            ( { model | isDark = not model.isDark }, Cmd.none )
 
 
 
@@ -57,8 +73,10 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "main" ]
-        [ h1 [] [ text "Two Dew Elm" ]
+        [ h1 [ class "text-white text-shadow" ] [ text "Two Dew Elm" ]
         , div [ class "todo-list" ] (List.map viewItem model.items)
+        , viewDarkModeToggle model.isDark
+        , Icon.css
         ]
 
 
@@ -67,5 +85,19 @@ viewItem item =
     div [ class "list-item" ]
         [ span [ class "list-item-text" ] [ text item ]
         , span [ class "list-item-actions" ]
-            [ button [ class "icon-button" ] [ i [ class "fas fa-pencil-alt" ] [] ] ]
+            [ button [ class "icon-button text-blue" ] [ Icon.viewStyled [] Icon.pencilAlt ]
+            , button [ class "icon-button text-grey" ] [ Icon.viewStyled [] Icon.calendarAlt ]
+            , button [ class "icon-button text-red" ] [ Icon.viewStyled [] Icon.trashAlt ]
+            ]
+        ]
+
+
+viewDarkModeToggle : Bool -> Html Msg
+viewDarkModeToggle isDark =
+    div [ class "dark-mode" ]
+        [ label [ class "toggle" ]
+            [ input [ type_ "checkbox", checked isDark, onClick ClickedDarkMode ] []
+            , span [ class "slider" ] []
+            ]
+        , text "Dark Mode"
         ]
