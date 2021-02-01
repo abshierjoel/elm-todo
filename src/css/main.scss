@@ -26,7 +26,9 @@ img {
   max-width: 200px;
 }
 
-div {
+div,
+input,
+button {
   box-sizing: border-box;
 }
 
@@ -38,6 +40,41 @@ div {
   @include themed() {
     background: t($background);
   }
+}
+
+.alert {
+  max-width: 400px;
+  min-width: 400px;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  margin: 12px auto;
+  padding: 24px;
+
+  text-align: left;
+  color: white;
+
+  span {
+    margin-left: 16px;
+    vertical-align: middle;
+  }
+  svg {
+    font-size: 1.6rem;
+    vertical-align: middle;
+  }
+}
+
+.warning {
+  background: #f44336;
+  color: white;
+}
+
+.info {
+  background: deepskyblue;
+}
+
+.success {
+  background: mediumseagreen;
 }
 
 h1.logo {
@@ -87,9 +124,61 @@ h1.logo {
   cursor: pointer;
 }
 
+.add-form {
+  width: 100%;
+  margin: 12px 0;
+
+  input {
+    height: 40px;
+    padding: 6px;
+    font-size: 1.2rem;
+    vertical-align: middle;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background: #333;
+    color: white;
+
+    &:hover {
+      border-color: #888;
+    }
+    &:focus {
+      @include themed() {
+        border-color: t($primaryColor);
+      }
+    }
+  }
+
+  button {
+    height: 40px;
+    padding: 8px;
+    margin-left: 12px;
+    vertical-align: middle;
+    color: white;
+    border-radius: 4px;
+    border: 1px solid #555;
+    background: #333;
+    cursor: pointer;
+
+    &:hover {
+      @include themed() {
+        background-color: t($primaryColor);
+        border-color: #888;
+      }
+    }
+
+    span {
+      padding-left: 6px;
+    }
+  }
+}
+
 .dark-mode {
   font-size: 1.5rem;
   line-height: 2rem;
+
+  & > span {
+    margin-left: 12px;
+  }
 
   @include themed() {
     color: t($secondaryText);

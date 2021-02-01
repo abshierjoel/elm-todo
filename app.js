@@ -30,9 +30,20 @@ router.get('/items/:list_id', (req, res) => {
   else res.json(lists[req.params.list_id]);
 });
 
-router.post('/item', (req, res) => {
-  if (req.body.list_id) {
-    lists[req.body.list_id].push(req.body.item);
+router.post('/item/:list_id', (req, res) => {
+  if (req.params.list_id) {
+    lists[req.params.list_id].push(req.body.item);
+    res.status(204).send();
+  } else {
+    res.status(400).send();
+  }
+});
+
+router.delete('/item/:list_id', (req, res) => {
+  if (req.params.list_id) {
+    lists[req.params.list_id] = lists[req.params.list_id].filter(
+      (x) => x != req.body.item
+    );
     res.status(204).send();
   } else {
     res.status(400).send();

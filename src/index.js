@@ -7,8 +7,4 @@ const app = Elm.Main.init({
   node: document.getElementById('root'),
 });
 
-app.ports.setTheme.subscribe((isDark) => {
-  console.log('it be clicked!');
-});
-
 serviceWorker.unregister();
