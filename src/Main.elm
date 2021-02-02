@@ -1,6 +1,7 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Browser
+import Browser.Dom as Dom exposing (focus)
 import Char exposing (isDigit)
 import FontAwesome.Attributes as Icon
 import FontAwesome.Brands as Icon
@@ -11,37 +12,36 @@ import FontAwesome.Styles as Icon
 import FontAwesome.Svg as SvgIcon
 import FontAwesome.Transforms as Icon
 import Html exposing (Html, a, button, div, form, h1, i, img, input, label, span, text)
-import Html.Attributes exposing (checked, class, placeholder, src, type_, value)
+import Html.Attributes exposing (checked, class, id, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
-import Json.Decode as Decode exposing (Decoder, list, string)
+import Json.Decode as Decode exposing (Decoder, bool, list, string)
+import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode exposing (Value)
+import Task
 
 
 
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program String Model Msg
 main =
     Browser.element
         { view = view
-        , init = \_ -> init
+        , init = init
         , update = update
         , subscriptions = always Sub.none
         }
-
-
-port setTheme : Bool -> Cmd msg
 
 
 
 ---- MODEL ----
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( initialModel, getItems )
+init : String -> ( Model, Cmd Msg )
+init flags =
+    ( { initialModel | listOwner = flags }, getList flags )
 
 
 initialModel : Model
@@ -50,14 +50,33 @@ initialModel =
     , isDark = True
     , alert = Nothing
     , newItem = ""
+    , listOwner = ""
+    , listId = ""
     }
 
 
 type alias Model =
-    { items : List String
+    { items : List Item
     , isDark : Bool
     , alert : Maybe Alert
     , newItem : String
+    , listOwner : String
+    , listId : String
+    }
+
+
+type alias TodoList =
+    { id : String
+    , owner : String
+    , isDark : Bool
+    }
+
+
+type alias Item =
+    { id : String
+    , task : String
+    , isEditing : Bool
+    , editingTask : String
     }
 
 
@@ -73,19 +92,46 @@ type alias Alert =
 
 type Msg
     = ClickedDarkMode
-    | GotListItems (Result Http.Error (List String))
     | ClickedAddItem
     | ClickedDeleteItem String
+    | ClickedEditItem String
+    | ClickedUpdateItem String String
+    | UpdateItemText String String
+    | GotList (Result Http.Error TodoList)
+    | GotListItems (Result Http.Error (List Item))
     | AddedItem (Result Http.Error ())
     | GotDeletedItem (Result Http.Error ())
+    | GotUpdatedItem (Result Http.Error ())
     | UpdateNewItem String
+    | FocusResult (Result Dom.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ClickedDarkMode ->
-            ( { model | isDark = not model.isDark }, setTheme model.isDark )
+            ( { model | isDark = not model.isDark }, putDarkMode model.listId (not model.isDark) )
+
+        ClickedAddItem ->
+            ( model, addItem model.listId model.newItem )
+
+        ClickedDeleteItem itemId ->
+            ( model, deleteItem itemId )
+
+        ClickedEditItem itemId ->
+            ( { model | items = toggleOneEditState itemId model.items }, focusOn itemId )
+
+        ClickedUpdateItem itemId newTask ->
+            ( model, updateItem itemId newTask )
+
+        UpdateItemText itemId newTask ->
+            ( { model | items = updateItemTexts itemId newTask model.items }, Cmd.none )
+
+        GotList (Ok todoList) ->
+            ( { model | listId = todoList.id, isDark = todoList.isDark }, getItems todoList.id )
+
+        GotList (Err _) ->
+            ( { model | alert = Just { alertType = "warning", alertText = "Could not get list ID." } }, Cmd.none )
 
         GotListItems (Ok items) ->
             ( { model | items = items }, Cmd.none )
@@ -93,20 +139,20 @@ update msg model =
         GotListItems (Err _) ->
             ( model, Cmd.none )
 
-        ClickedAddItem ->
-            ( model, addItem model.newItem )
-
-        ClickedDeleteItem item ->
-            ( model, deleteItem item )
-
         GotDeletedItem (Ok _) ->
-            ( { model | alert = Just { alertType = "success", alertText = "Item successfully deleted!" } }, getItems )
+            ( { model | alert = Just { alertType = "success", alertText = "Item successfully deleted!" } }, getItems model.listId )
 
         GotDeletedItem (Err _) ->
             ( { model | alert = Just { alertType = "warning", alertText = "An unkown error occoured!" } }, Cmd.none )
 
+        GotUpdatedItem (Ok _) ->
+            ( { model | alert = Just { alertType = "success", alertText = "Item successfully updated!" } }, getItems model.listId )
+
+        GotUpdatedItem (Err _) ->
+            ( { model | alert = Just { alertType = "warning", alertText = "An unkown error occoured!" } }, Cmd.none )
+
         AddedItem (Ok _) ->
-            ( { model | newItem = "", alert = Just { alertType = "success", alertText = "Item Added!" } }, getItems )
+            ( { model | newItem = "", alert = Just { alertType = "success", alertText = "Item Added!" } }, getItems model.listId )
 
         AddedItem (Err _) ->
             ( { model | alert = Just { alertType = "warning", alertText = "An unkown error occoured!" } }, Cmd.none )
@@ -114,50 +160,156 @@ update msg model =
         UpdateNewItem newItem ->
             ( { model | newItem = newItem }, Cmd.none )
 
+        FocusResult result ->
+            case result of
+                _ ->
+                    ( model, Cmd.none )
 
 
----- DECODE ----
+focusOn : String -> Cmd Msg
+focusOn itemId =
+    let
+        domId =
+            "input_" ++ itemId
+    in
+    Task.attempt FocusResult (focus domId)
 
 
-getItems : Cmd Msg
-getItems =
+toggleOneEditState : String -> List Item -> List Item
+toggleOneEditState id items =
+    let
+        changeEdit : Item -> Item
+        changeEdit item =
+            if item.id == id then
+                { item | isEditing = not item.isEditing }
+
+            else
+                item
+    in
+    List.map changeEdit items
+
+
+updateItemTexts : String -> String -> List Item -> List Item
+updateItemTexts id newTask items =
+    let
+        changeTask : Item -> Item
+        changeTask item =
+            if item.id == id then
+                { item | editingTask = newTask }
+
+            else
+                item
+    in
+    List.map changeTask items
+
+
+
+---- HTTP ----
+
+
+getList : String -> Cmd Msg
+getList owner =
     Http.get
-        { url = "/api/items/joel"
-        , expect = Http.expectJson GotListItems itemsDecoder
+        { url = "/api/list/" ++ owner
+        , expect = Http.expectJson GotList listDecoder
         }
 
 
-addItem : String -> Cmd Msg
-addItem item =
+getItems : String -> Cmd Msg
+getItems listId =
+    Http.get
+        { url = "/api/items/" ++ listId
+        , expect = Http.expectJson GotListItems (list itemDecoder)
+        }
+
+
+addItem : String -> String -> Cmd Msg
+addItem listId item =
     Http.post
-        { url = "/api/item/joel"
+        { url = "/api/item/" ++ listId
         , body = Http.jsonBody (itemEncoder item)
         , expect = Http.expectWhatever AddedItem
         }
 
 
-deleteItem : String -> Cmd Msg
-deleteItem item =
+updateItem : String -> String -> Cmd Msg
+updateItem itemId newTask =
     Http.request
-        { url = "/api/item/joel"
+        { url = "api/item/" ++ itemId
+        , method = "PUT"
         , headers = []
-        , body = Http.jsonBody (itemEncoder item)
-        , expect = Http.expectWhatever GotDeletedItem
-        , method = "DELETE"
+        , body = Http.jsonBody (itemEncoder newTask)
+        , expect = Http.expectWhatever GotUpdatedItem
         , timeout = Nothing
         , tracker = Nothing
         }
 
 
+putDarkMode : String -> Bool -> Cmd Msg
+putDarkMode listId isDark =
+    Http.request
+        { url = "api/list/darkmode/" ++ listId
+        , method = "PUT"
+        , headers = []
+        , body = Http.jsonBody (encodeIsDark isDark)
+        , expect = Http.expectWhatever GotDeletedItem
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+
+---- DECODE ----
+
+
+encodeIsDark : Bool -> Encode.Value
+encodeIsDark isDark =
+    Encode.object
+        [ ( "isDark", Encode.bool isDark ) ]
+
+
+deleteItem : String -> Cmd Msg
+deleteItem itemId =
+    Http.request
+        { url = "/api/item/" ++ itemId
+        , method = "DELETE"
+        , headers = []
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever GotDeletedItem
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+listDecoder : Decoder TodoList
+listDecoder =
+    Decode.succeed buildTodoList
+        |> required "_id" string
+        |> required "owner" string
+        |> required "isDark" bool
+
+
+buildTodoList : String -> String -> Bool -> TodoList
+buildTodoList id owner isDark =
+    { id = id, owner = owner, isDark = isDark }
+
+
 itemEncoder : String -> Encode.Value
 itemEncoder item =
     Encode.object
-        [ ( "item", Encode.string item ) ]
+        [ ( "task", Encode.string item ) ]
 
 
-itemsDecoder : Decoder (List String)
-itemsDecoder =
-    list string
+itemDecoder : Decoder Item
+itemDecoder =
+    Decode.succeed buildItem
+        |> required "_id" string
+        |> required "task" string
+
+
+buildItem : String -> String -> Item
+buildItem id task =
+    { id = id, task = task, isEditing = False, editingTask = task }
 
 
 
@@ -215,14 +367,30 @@ viewAddForm newItem =
         ]
 
 
-viewItem : String -> Html Msg
+viewItem : Item -> Html Msg
 viewItem item =
-    div [ class "list-item" ]
-        [ span [ class "list-item-text" ] [ text item ]
+    let
+        domId =
+            "input_" ++ item.id
+
+        titleArea =
+            if item.isEditing then
+                form [ onSubmit (ClickedUpdateItem item.id item.editingTask) ]
+                    [ span [ class "list-item-text" ]
+                        [ input [ type_ "text", id domId, value item.editingTask, onInput <| UpdateItemText item.id ] []
+                        , button [ type_ "button" ] [ text "Update" ]
+                        ]
+                    ]
+
+            else
+                span [ class "list-item-text" ] [ text item.task ]
+    in
+    div [ class "list-item", id item.id ]
+        [ titleArea
         , span [ class "list-item-actions" ]
-            [ button [ class "icon-button text-blue" ] [ Icon.viewStyled [] Icon.pencilAlt ]
+            [ button [ class "icon-button text-blue", onClick <| ClickedEditItem item.id ] [ Icon.viewStyled [] Icon.pencilAlt ]
             , button [ class "icon-button text-grey" ] [ Icon.viewStyled [] Icon.calendarAlt ]
-            , button [ class "icon-button text-red", onClick <| ClickedDeleteItem item ] [ Icon.viewStyled [] Icon.trashAlt ]
+            , button [ class "icon-button text-red", onClick <| ClickedDeleteItem item.id ] [ Icon.viewStyled [] Icon.trashAlt ]
             ]
         ]
 
