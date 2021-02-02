@@ -38,6 +38,28 @@ router.get('/list/:owner', (req, res) => {
   });
 });
 
+router.post('/list/:owner', (req, res) => {
+  if (!req.params.owner) res.status(400).send();
+
+  todoLists
+    .countDocuments({ owner: req.params.owner }, (err, count) => count > 0)
+    .then((exists) => {
+      if (exists) {
+        res.status(409).send();
+      } else {
+        const newList = {
+          owner: req.params.owner,
+          isDark: true,
+        };
+
+        todoLists.create(newList, (err, result) => {
+          if (err) res.status(500).send();
+          else res.status(204).send();
+        });
+      }
+    });
+});
+
 router.put('/list/darkmode/:listId', (req, res) => {
   if (!req.params.listId) res.status(400).send();
 
