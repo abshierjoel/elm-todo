@@ -34,6 +34,7 @@ router.get('/list/:owner', (req, res) => {
 
   todoLists.findOne({ owner: req.params.owner }, (err, result) => {
     if (err) res.send(err);
+    else if (result == null) res.status(404).send();
     else res.json(result);
   });
 });
