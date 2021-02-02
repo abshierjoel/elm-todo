@@ -13,4 +13,8 @@ node_modules
 # Desktop Services Store on macOS
 .DS_Store
 
+# Exclude Environment Variables
 .env
+
+# Exclude Bundles
+*.bundle
