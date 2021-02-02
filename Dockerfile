@@ -14,6 +14,9 @@ RUN npm install
 RUN npm i elm
 RUN npm i elm-test
 
+#build
+RUN npm run build
+
 #EXPOSE
 EXPOSE 8080
 
