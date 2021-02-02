@@ -1,21 +1,23 @@
+require('dotenv').config();
+
 const express = require('express');
 const app = express();
+
+const mongoose = require('mongoose');
+const todoLists = require('./models/todoList');
+const items = require('./models/item');
+const { ObjectID } = require('mongodb');
 
 app.use(express.static('public'));
 app.use(express.json());
 
-/********* MOCK *********/
+/********* MONGO *********/
+const uri = process.env.MONGO_URI;
 
-const lists = {
-  joel: ['work', 'cook', 'dig'],
-  kendall: ['work', 'cook', 'dig'],
-  chris: ['work', 'cook', 'dig'],
-  fred: ['work', 'cook', 'dig'],
-  adam: ['work', 'cook', 'dig'],
-  shahn: ['work', 'cook', 'dig'],
-  sam: ['work', 'cook', 'dig'],
-  amy: ['work', 'cook', 'dig'],
-};
+mongoose.connect(uri, { useUnifiedTopology: true, useNewUrlParser: true });
+const connection = mongoose.connection;
+
+connection.once('open', () => console.log('MongoDB is hooked up!'));
 
 /********* ROUTES *********/
 
@@ -25,29 +27,72 @@ app.get('/', (req, res) => {
 
 var router = express.Router();
 
-router.get('/items/:list_id', (req, res) => {
-  if (!lists.hasOwnProperty(req.params.list_id)) res.status(404).send();
-  else res.json(lists[req.params.list_id]);
+// Lists
+
+router.get('/list/:owner', (req, res) => {
+  if (!req.params.owner) res.status(400).send();
+
+  todoLists.findOne({ owner: req.params.owner }, (err, result) => {
+    if (err) res.send(err);
+    else res.json(result);
+  });
 });
 
-router.post('/item/:list_id', (req, res) => {
-  if (req.params.list_id) {
-    lists[req.params.list_id].push(req.body.item);
-    res.status(204).send();
-  } else {
-    res.status(400).send();
-  }
+router.put('/list/darkmode/:listId', (req, res) => {
+  if (!req.params.listId) res.status(400).send();
+
+  const query = { _id: ObjectID(req.params.listId) };
+  const update = { isDark: req.body.isDark };
+
+  todoLists.updateOne(query, { $set: update }, (err, result) => {
+    if (err) res.send(err);
+    else res.status(204).send();
+  });
 });
 
-router.delete('/item/:list_id', (req, res) => {
-  if (req.params.list_id) {
-    lists[req.params.list_id] = lists[req.params.list_id].filter(
-      (x) => x != req.body.item
-    );
-    res.status(204).send();
-  } else {
-    res.status(400).send();
-  }
+//Items
+
+router.get('/items/:listId', (req, res) => {
+  if (!req.params.listId) res.status(400).send();
+
+  items.find({ listId: req.params.listId }, (err, result) => {
+    if (err) res.send(err);
+    else res.json(result);
+  });
+});
+
+//Item
+
+router.post('/item/:listId', (req, res) => {
+  if (!req.params.listId || !req.body.task) res.status(400).send();
+
+  const query = { listId: req.params.listId, task: req.body.task };
+
+  items.create(query, (err, result) => {
+    if (err) res.status(500).send();
+    else res.status(204).send();
+  });
+});
+
+router.delete('/item/:itemId', (req, res) => {
+  if (!req.params.itemId) res.status(400).send();
+
+  items.deleteOne({ _id: req.params.itemId }, (err, result) => {
+    if (err) res.status(500).send();
+    else res.status(204).send();
+  });
+});
+
+router.put('/item/:itemId', (req, res) => {
+  if (!req.params.itemId) res.status(400).send();
+
+  const query = { _id: ObjectID(req.params.itemId) };
+  const update = { task: req.body.task };
+
+  items.updateOne(query, { $set: update }, (err, result) => {
+    if (err) res.send(err);
+    else res.status(204).send();
+  });
 });
 
 app.use('/api', router);
