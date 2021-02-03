@@ -1,10 +1,13 @@
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const WebpackNodeExternals = require('webpack-node-externals');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
+const fs = require('fs');
 
 module.exports = {
-  entry: { index: './src/index.js' },
+  entry: { index: './src/index.js', app: './app.js' },
+  target: 'node',
   output: {
     filename: '[name].bundle.js',
     path: path.resolve(__dirname, 'public/dist'),
@@ -20,6 +23,17 @@ module.exports = {
   ],
   module: {
     rules: [
+      {
+        test: /\.(js|jsx)$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+        },
+      },
+      {
+        test: /\.html$/,
+        use: [{ loader: 'html-loader' }],
+      },
       {
         test: /\.elm$/,
         exclude: [/elm-stuff/, /node_modules/],

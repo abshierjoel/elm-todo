@@ -1,12 +1,20 @@
-require('dotenv').config();
+// require('dotenv').config();
+// const express = require('express');
+// const mongoose = require('mongoose');
+// const todoLists = require('./models/todoList');
+// const items = require('./models/item');
+// const { ObjectID } = require('mongodb');
 
-const express = require('express');
+import express from 'express';
+import todoLists from './models/todoList';
+import items from './models/item';
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import { ObjectID } from 'mongodb';
+
+dotenv.config();
+
 const app = express();
-
-const mongoose = require('mongoose');
-const todoLists = require('./models/todoList');
-const items = require('./models/item');
-const { ObjectID } = require('mongodb');
 
 app.use(express.static('public'));
 app.use(express.json());
@@ -22,7 +30,7 @@ connection.once('open', () => console.log('MongoDB is hooked up!'));
 /********* ROUTES *********/
 
 app.get('/', (req, res) => {
-  res.sendFile('/index.html');
+  res.sendFile(__dirname + '/index.html');
 });
 
 var router = express.Router();
