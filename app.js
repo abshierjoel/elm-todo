@@ -1,10 +1,3 @@
-// require('dotenv').config();
-// const express = require('express');
-// const mongoose = require('mongoose');
-// const todoLists = require('./models/todoList');
-// const items = require('./models/item');
-// const { ObjectID } = require('mongodb');
-
 import express from 'express';
 import todoLists from './models/todoList';
 import items from './models/item';
