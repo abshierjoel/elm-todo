@@ -44,6 +44,7 @@
     "babel-preset-env": "^1.7.0",
     "body-parser": "^1.19.0",
     "dotenv": "^8.2.0",
+    "elm-format": "^0.8.4",
     "elm-webpack-loader": "^7.0.1",
     "esm": "^3.2.25",
     "file-loader": "^6.2.0",

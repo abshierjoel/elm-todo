@@ -31,7 +31,10 @@ var router = express.Router();
 // Lists
 
 router.get('/list/:owner', (req, res) => {
-  if (!req.params.owner) res.status(400).send();
+  if (!req.params.owner) {
+    res.status(400).send();
+    return;
+  }
 
   todoLists.findOne({ owner: req.params.owner }, (err, result) => {
     if (err) res.send(err);
@@ -41,7 +44,10 @@ router.get('/list/:owner', (req, res) => {
 });
 
 router.post('/list/:owner', (req, res) => {
-  if (!req.params.owner) res.status(400).send();
+  if (!req.params.owner) {
+    res.status(400).send();
+    return;
+  }
 
   todoLists
     .countDocuments({ owner: req.params.owner }, (err, count) => count > 0)
@@ -63,7 +69,10 @@ router.post('/list/:owner', (req, res) => {
 });
 
 router.put('/list/darkmode/:listId', (req, res) => {
-  if (!req.params.listId) res.status(400).send();
+  if (!req.params.listId) {
+    res.status(400).send();
+    return;
+  }
 
   const query = { _id: ObjectID(req.params.listId) };
   const update = { isDark: req.body.isDark };
@@ -77,7 +86,10 @@ router.put('/list/darkmode/:listId', (req, res) => {
 //Items
 
 router.get('/items/:listId', (req, res) => {
-  if (!req.params.listId) res.status(400).send();
+  if (!req.params.listId) {
+    res.status(400).send();
+    return;
+  }
 
   items.find({ listId: req.params.listId }, (err, result) => {
     if (err) res.send(err);
@@ -88,9 +100,16 @@ router.get('/items/:listId', (req, res) => {
 //Item
 
 router.post('/item/:listId', (req, res) => {
-  if (!req.params.listId || !req.body.task) res.status(400).send();
+  if (!req.params.listId || !req.body.task || req.body.task === '') {
+    res.status(400).send();
+    return;
+  }
 
-  const query = { listId: req.params.listId, task: req.body.task };
+  const query = {
+    listId: req.params.listId,
+    task: req.body.task,
+    description: req.body.description,
+  };
 
   items.create(query, (err, result) => {
     if (err) res.status(500).send();
@@ -99,7 +118,10 @@ router.post('/item/:listId', (req, res) => {
 });
 
 router.delete('/item/:itemId', (req, res) => {
-  if (!req.params.itemId) res.status(400).send();
+  if (!req.params.itemId) {
+    res.status(400).send();
+    return;
+  }
 
   items.deleteOne({ _id: req.params.itemId }, (err, result) => {
     if (err) res.status(500).send();
@@ -108,10 +130,26 @@ router.delete('/item/:itemId', (req, res) => {
 });
 
 router.put('/item/:itemId', (req, res) => {
-  if (!req.params.itemId) res.status(400).send();
+  if (!req.params.itemId) {
+    res.status(400).send();
+    return;
+  }
+
+  const getBody = (body) => {
+    if (body.task && body.description)
+      return { task: body.task, description: body.description };
+    else if (body.complete !== undefined) return { complete: body.complete };
+    else return null;
+  };
+
+  const update = getBody(req.body);
+
+  if (!update) {
+    res.status(400).send();
+    return;
+  }
 
   const query = { _id: ObjectID(req.params.itemId) };
-  const update = { task: req.body.task };
 
   items.updateOne(query, { $set: update }, (err, result) => {
     if (err) res.send(err);

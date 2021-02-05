@@ -7,18 +7,20 @@ import FontAwesome.Attributes as Icon
 import FontAwesome.Brands as Icon
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Layering as Icon
-import FontAwesome.Solid as Icon
+import FontAwesome.Regular as IconFar
+import FontAwesome.Solid as IconFas
 import FontAwesome.Styles as Icon
 import FontAwesome.Svg as SvgIcon
 import FontAwesome.Transforms as Icon
-import Html exposing (Html, a, button, div, form, h1, i, img, input, label, span, text)
-import Html.Attributes exposing (checked, class, id, placeholder, src, type_, value)
+import Html exposing (Html, a, button, div, form, h1, i, img, input, label, span, text, textarea)
+import Html.Attributes as Attr exposing (checked, class, id, placeholder, src, type_, value)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Json.Decode as Decode exposing (Decoder, bool, list, string)
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode exposing (Value)
 import Task
+import Tuple exposing (first, second)
 
 
 
@@ -49,7 +51,7 @@ initialModel =
     { items = []
     , isDark = True
     , alert = Nothing
-    , newItem = ""
+    , newItem = { task = "", description = "" }
     , listOwner = ""
     , listId = ""
     }
@@ -59,7 +61,7 @@ type alias Model =
     { items : List Item
     , isDark : Bool
     , alert : Maybe Alert
-    , newItem : String
+    , newItem : NewItem
     , listOwner : String
     , listId : String
     }
@@ -72,11 +74,20 @@ type alias TodoList =
     }
 
 
+type alias NewItem =
+    { task : String
+    , description : String
+    }
+
+
 type alias Item =
     { id : String
     , task : String
+    , description : String
     , isEditing : Bool
+    , complete : Bool
     , editingTask : String
+    , editingDesc : String
     }
 
 
@@ -93,16 +104,19 @@ type alias Alert =
 type Msg
     = ClickedDarkMode
     | ClickedAddItem
+    | ClickedCompleteItem String Bool
     | ClickedDeleteItem String
     | ClickedEditItem String
-    | ClickedUpdateItem String String
-    | UpdateItemText String String
+    | ClickedUpdateItem String String String
+    | UpdateItemTask String String
+    | UpdateItemDesc String String
+    | UpdateNewItemTask String
+    | UpdateNewItemDesc String
     | GotList (Result Http.Error TodoList)
     | GotListItems (Result Http.Error (List Item))
     | AddedItem (Result Http.Error ())
     | GotDeletedItem (Result Http.Error ())
     | GotUpdatedItem (Result Http.Error ())
-    | UpdateNewItem String
     | FocusResult (Result Dom.Error ())
 
 
@@ -115,17 +129,29 @@ update msg model =
         ClickedAddItem ->
             ( model, addItem model.listId model.newItem )
 
+        ClickedCompleteItem itemId complete ->
+            ( model, completeItem itemId complete )
+
         ClickedDeleteItem itemId ->
             ( model, deleteItem itemId )
 
         ClickedEditItem itemId ->
             ( { model | items = toggleOneEditState itemId model.items }, focusOn itemId )
 
-        ClickedUpdateItem itemId newTask ->
-            ( model, updateItem itemId newTask )
+        ClickedUpdateItem itemId newTask newDesc ->
+            ( model, updateItem itemId ( newTask, newDesc ) )
 
-        UpdateItemText itemId newTask ->
-            ( { model | items = updateItemTexts itemId newTask model.items }, Cmd.none )
+        UpdateItemTask itemId newTask ->
+            ( { model | items = updateItemTask itemId newTask model.items }, Cmd.none )
+
+        UpdateItemDesc itemId newDesc ->
+            ( { model | items = updateItemDesc itemId newDesc model.items }, Cmd.none )
+
+        UpdateNewItemTask newTask ->
+            ( { model | newItem = { task = newTask, description = model.newItem.description } }, Cmd.none )
+
+        UpdateNewItemDesc newDesc ->
+            ( { model | newItem = { task = model.newItem.task, description = newDesc } }, Cmd.none )
 
         GotList (Ok todoList) ->
             ( { model | listId = todoList.id, isDark = todoList.isDark }, getItems todoList.id )
@@ -152,13 +178,10 @@ update msg model =
             ( { model | alert = Just { alertType = "warning", alertText = "An unkown error occoured!" } }, Cmd.none )
 
         AddedItem (Ok _) ->
-            ( { model | newItem = "", alert = Just { alertType = "success", alertText = "Item Added!" } }, getItems model.listId )
+            ( { model | newItem = { task = "", description = "" }, alert = Just { alertType = "success", alertText = "Item Added!" } }, getItems model.listId )
 
         AddedItem (Err _) ->
             ( { model | alert = Just { alertType = "warning", alertText = "An unkown error occoured!" } }, Cmd.none )
-
-        UpdateNewItem newItem ->
-            ( { model | newItem = newItem }, Cmd.none )
 
         FocusResult result ->
             case result of
@@ -189,13 +212,27 @@ toggleOneEditState id items =
     List.map changeEdit items
 
 
-updateItemTexts : String -> String -> List Item -> List Item
-updateItemTexts id newTask items =
+updateItemTask : String -> String -> List Item -> List Item
+updateItemTask id newTask items =
     let
         changeTask : Item -> Item
         changeTask item =
             if item.id == id then
                 { item | editingTask = newTask }
+
+            else
+                item
+    in
+    List.map changeTask items
+
+
+updateItemDesc : String -> String -> List Item -> List Item
+updateItemDesc id newDesc items =
+    let
+        changeTask : Item -> Item
+        changeTask item =
+            if item.id == id then
+                { item | editingDesc = newDesc }
 
             else
                 item
@@ -223,23 +260,49 @@ getItems listId =
         }
 
 
-addItem : String -> String -> Cmd Msg
+addItem : String -> NewItem -> Cmd Msg
 addItem listId item =
     Http.post
         { url = "/api/item/" ++ listId
-        , body = Http.jsonBody (itemEncoder item)
+        , body = Http.jsonBody (itemEncoder ( item.task, item.description ))
         , expect = Http.expectWhatever AddedItem
         }
 
 
-updateItem : String -> String -> Cmd Msg
-updateItem itemId newTask =
+updateItem : String -> ( String, String ) -> Cmd Msg
+updateItem itemId item =
     Http.request
         { url = "api/item/" ++ itemId
         , method = "PUT"
         , headers = []
-        , body = Http.jsonBody (itemEncoder newTask)
+        , body = Http.jsonBody (itemEncoder item)
         , expect = Http.expectWhatever GotUpdatedItem
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+completeItem : String -> Bool -> Cmd Msg
+completeItem itemId complete =
+    Http.request
+        { url = "api/item/" ++ itemId
+        , method = "PUT"
+        , headers = []
+        , body = Http.jsonBody (completeEncoder complete)
+        , expect = Http.expectWhatever GotUpdatedItem
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+deleteItem : String -> Cmd Msg
+deleteItem itemId =
+    Http.request
+        { url = "/api/item/" ++ itemId
+        , method = "DELETE"
+        , headers = []
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever GotDeletedItem
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -268,19 +331,6 @@ encodeIsDark isDark =
         [ ( "isDark", Encode.bool isDark ) ]
 
 
-deleteItem : String -> Cmd Msg
-deleteItem itemId =
-    Http.request
-        { url = "/api/item/" ++ itemId
-        , method = "DELETE"
-        , headers = []
-        , body = Http.emptyBody
-        , expect = Http.expectWhatever GotDeletedItem
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
 listDecoder : Decoder TodoList
 listDecoder =
     Decode.succeed buildTodoList
@@ -294,10 +344,18 @@ buildTodoList id owner isDark =
     { id = id, owner = owner, isDark = isDark }
 
 
-itemEncoder : String -> Encode.Value
+itemEncoder : ( String, String ) -> Encode.Value
 itemEncoder item =
     Encode.object
-        [ ( "task", Encode.string item ) ]
+        [ ( "task", Encode.string <| first item )
+        , ( "description", Encode.string <| second item )
+        ]
+
+
+completeEncoder : Bool -> Encode.Value
+completeEncoder complete =
+    Encode.object
+        [ ( "complete", Encode.bool complete ) ]
 
 
 itemDecoder : Decoder Item
@@ -305,11 +363,20 @@ itemDecoder =
     Decode.succeed buildItem
         |> required "_id" string
         |> required "task" string
+        |> required "description" string
+        |> required "complete" bool
 
 
-buildItem : String -> String -> Item
-buildItem id task =
-    { id = id, task = task, isEditing = False, editingTask = task }
+buildItem : String -> String -> String -> Bool -> Item
+buildItem id task description complete =
+    { id = id
+    , task = task
+    , description = description
+    , complete = complete
+    , isEditing = False
+    , editingTask = task
+    , editingDesc = description
+    }
 
 
 
@@ -349,19 +416,20 @@ view model =
             [ h1 [ class "text-white text-shadow" ] [ text "Two Dew Elm" ]
             , alertBox
             , items
-            , viewAddForm model.newItem
+            , viewAddItem model.newItem
             , viewDarkModeToggle model.isDark
             , Icon.css
             ]
         ]
 
 
-viewAddForm : String -> Html Msg
-viewAddForm newItem =
+viewAddItem : NewItem -> Html Msg
+viewAddItem newItem =
     form [ class "add-form", onSubmit ClickedAddItem ]
-        [ input [ type_ "text", placeholder "New Item...", value newItem, onInput UpdateNewItem ] []
+        [ input [ type_ "text", placeholder "New Item...", value newItem.task, Attr.required True, onInput UpdateNewItemTask ] []
+        , textarea [ value newItem.description, placeholder "Description...", onInput UpdateNewItemDesc ] []
         , button []
-            [ Icon.viewStyled [] Icon.plus
+            [ Icon.viewStyled [] IconFas.plus
             , span [] [ text "Add" ]
             ]
         ]
@@ -370,27 +438,58 @@ viewAddForm newItem =
 viewItem : Item -> Html Msg
 viewItem item =
     let
-        domId =
-            "input_" ++ item.id
+        complete =
+            if item.complete then
+                "text-dashed"
+
+            else
+                ""
 
         titleArea =
             if item.isEditing then
-                form [ onSubmit (ClickedUpdateItem item.id item.editingTask) ]
-                    [ span [ class "list-item-text" ]
-                        [ input [ type_ "text", id domId, value item.editingTask, onInput <| UpdateItemText item.id ] []
-                        , button [ type_ "button" ] [ text "Update" ]
-                        ]
-                    ]
+                viewEditItem item
 
             else
-                span [ class "list-item-text" ] [ text item.task ]
+                span [ class "list-item-text" ]
+                    [ span [ class <| "list-item-title " ++ complete ] [ text item.task ]
+                    , span [ class "list-item-description" ] [ text item.description ]
+                    ]
+
+        completeColor =
+            if item.complete then
+                "text-green"
+
+            else
+                "text-grey"
+
+        completeIcon =
+            if item.complete then
+                IconFas.checkCircle
+
+            else
+                IconFar.checkCircle
     in
     div [ class "list-item", id item.id ]
         [ titleArea
         , span [ class "list-item-actions" ]
-            [ button [ class "icon-button text-blue", onClick <| ClickedEditItem item.id ] [ Icon.viewStyled [] Icon.pencilAlt ]
-            , button [ class "icon-button text-grey" ] [ Icon.viewStyled [] Icon.calendarAlt ]
-            , button [ class "icon-button text-red", onClick <| ClickedDeleteItem item.id ] [ Icon.viewStyled [] Icon.trashAlt ]
+            [ button [ class <| "icon-button " ++ completeColor, onClick <| ClickedCompleteItem item.id (not item.complete) ] [ Icon.viewStyled [] completeIcon ]
+            , button [ class "icon-button text-blue", onClick <| ClickedEditItem item.id ] [ Icon.viewStyled [] IconFas.pencilAlt ]
+            , button [ class "icon-button text-red", onClick <| ClickedDeleteItem item.id ] [ Icon.viewStyled [] IconFas.trashAlt ]
+            ]
+        ]
+
+
+viewEditItem : Item -> Html Msg
+viewEditItem item =
+    let
+        domId =
+            "input_" ++ item.id
+    in
+    form [ onSubmit (ClickedUpdateItem item.id item.editingTask item.editingDesc) ]
+        [ span [ class "list-item-text" ]
+            [ input [ type_ "text", id domId, value item.editingTask, onInput <| UpdateItemTask item.id ] []
+            , textarea [ value item.editingDesc, onInput <| UpdateItemDesc item.id ] []
+            , button [ type_ "submit" ] [ text "Update" ]
             ]
         ]
 
@@ -414,13 +513,13 @@ viewAlert msgText msgType =
 
         icon =
             if msgType == "warning" then
-                Icon.skullCrossbones
+                IconFas.skullCrossbones
 
             else if msgType == "success" then
-                Icon.poo
+                IconFas.poo
 
             else
-                Icon.exclamation
+                IconFas.exclamation
     in
     div [ class classes ]
         [ Icon.viewStyled [] icon
