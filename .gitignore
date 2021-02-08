@@ -17,5 +17,5 @@ node_modules
 .env
 
 # Exclude Bundles
-/public/dist
+/public/dist/*
 /server/*
